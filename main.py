@@ -16,7 +16,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-# ---------------- Product Model ----------------
+
 
 class Product(BaseModel):
     product_id: int
@@ -24,15 +24,6 @@ class Product(BaseModel):
     product_price: float
     product_category: str
 
-
-# ---------------- Home Page ----------------
-
-# @app.get("/", response_class=HTMLResponse)
-# def home(request: Request):
-#     return templates.TemplateResponse(
-#         "index.html",
-#         {"request": request}
-#     )
 @app.get("/")
 def home():
     return templates.TemplateResponse(
@@ -41,7 +32,7 @@ def home():
     )
 
 
-# ---------------- Add Product ----------------
+
 
 @app.post("/products", status_code=status.HTTP_201_CREATED)
 def add_product(product: Product):
@@ -82,7 +73,7 @@ def add_product(product: Product):
         )
 
 
-# ---------------- Get All Products ----------------
+
 
 @app.get("/products")
 def get_products():
@@ -107,7 +98,7 @@ def get_products():
     return product_list
 
 
-# ---------------- Get Single Product ----------------
+
 
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
@@ -132,7 +123,7 @@ def get_product(product_id: int):
     }
 
 
-# ---------------- Update Product ----------------
+
 
 @app.put("/products/{product_id}")
 def update_product(product_id: int, product: Product):
@@ -168,7 +159,6 @@ def update_product(product_id: int, product: Product):
     }
 
 
-# ---------------- Delete Product ----------------
 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int):

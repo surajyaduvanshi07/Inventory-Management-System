@@ -1,13 +1,11 @@
-// Product Form
+
 const form = document.getElementById("productForm");
 
-// Product Table
+
 const table = document.getElementById("productTable");
 
 
-// ------------------------
-// Load All Products
-// ------------------------
+
 
 async function loadProducts() {
 
@@ -45,9 +43,7 @@ async function loadProducts() {
 }
 
 
-// ------------------------
-// Add Product
-// ------------------------
+
 
 form.addEventListener("submit", async function(event){
 
@@ -89,9 +85,7 @@ form.addEventListener("submit", async function(event){
 
 
 
-// ------------------------
-// Delete Product
-// ------------------------
+
 
 async function deleteProduct(id){
 
@@ -119,8 +113,6 @@ async function deleteProduct(id){
 
 
 
-// ------------------------
-// Page Load
-// ------------------------
+
 
 loadProducts();
