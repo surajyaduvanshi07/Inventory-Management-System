@@ -1,10 +1,10 @@
 import mysql.connector
 
 connection = mysql.connector.connect(
-    host = "localhost",
+    host = "mysql.railway.internal",
     user = "root",
-    password = "YOUR_PASSWORD",
-    database = "inventory_db"
+    password = "jdaBUipZFCNnEmGidEScmarsFxZyissD",
+    database = "railway"
 )
 
 cursor = connection.cursor()
