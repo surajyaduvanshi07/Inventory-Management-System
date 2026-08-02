@@ -1,79 +1,32 @@
 import os
-import smtplib
-from email.message import EmailMessage
+import resend
 from dotenv import load_dotenv
 
 load_dotenv()
 
 EMAIL = os.getenv("EMAIL")
-APP_PASSWORD = os.getenv("APP_PASSWORD")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+
+resend.api_key = RESEND_API_KEY
 
 
 def send_otp(receiver_email, otp):
 
-    if not EMAIL or not APP_PASSWORD:
-        raise Exception(
-            "EMAIL or APP_PASSWORD is missing in Environment Variables."
-        )
+    params = {
+        "from": f"Inventory Management <{EMAIL}>",
+        "to": [receiver_email],
+        "subject": "Inventory Management OTP",
+        "html": f"""
+        <h2>Inventory Management System</h2>
 
-    message = EmailMessage()
+        <p>Your OTP is:</p>
 
-    message["Subject"] = "Inventory Management System OTP"
+        <h1>{otp}</h1>
 
-    message["From"] = EMAIL
-    message["To"] = receiver_email
+        <p>This OTP will expire in 5 minutes.</p>
 
-    message.set_content(f"""
-Hello,
+        <p>Do not share this OTP with anyone.</p>
+        """
+    }
 
-Your One Time Password (OTP) is:
-
-{otp}
-
-This OTP is valid for only 5 minutes.
-
-Do not share this OTP with anyone.
-
-Regards,
-Inventory Management System
-""")
-
-    try:
-
-        print("Connecting to Gmail SMTP...")
-
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as smtp:
-
-            smtp.ehlo()
-
-            smtp.starttls()
-
-            smtp.ehlo()
-
-            smtp.login(EMAIL, APP_PASSWORD)
-
-            smtp.send_message(message)
-
-        print("OTP sent successfully.")
-
-    except smtplib.SMTPAuthenticationError as e:
-        print("SMTP Authentication Error:", e)
-        raise Exception(
-            "Invalid Gmail Email or App Password."
-        )
-
-    except smtplib.SMTPConnectError as e:
-        print("SMTP Connection Error:", e)
-        raise Exception(
-            "Unable to connect to Gmail SMTP."
-        )
-
-    except OSError as e:
-        print("Network Error:", e)
-        raise Exception(
-            "Network connection failed while sending email."
-        )
-
-    except Exception as e:
-        print("Unexpected Error:", e)
-        raise
+    resend.Emails.send(params)
