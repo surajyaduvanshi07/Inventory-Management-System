@@ -1,171 +1,165 @@
-from fastapi import FastAPI, HTTPException, status, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
 from pydantic import BaseModel
 import sqlite3
-import database
-
-app = FastAPI()
-
-# Static Folder
+ 
+from database import get_connection, create_table
+ 
+app = FastAPI(title="Inventory Management System")
+ 
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Templates Folder
 templates = Jinja2Templates(directory="templates")
-
-
+ 
+create_table()
+ 
+ 
 class Product(BaseModel):
     product_id: int
     product_name: str
     product_price: float
     product_category: str
-
-
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
+ 
+ 
+class ProductUpdate(BaseModel):
+    product_name: str
+    product_price: float
+    product_category: str
+ 
+ 
+@app.get("/")
+def read_index(request: Request):
     return templates.TemplateResponse(
-        request=request,
         name="index.html",
-        context={"request": request}
+        request=request,
+        context={}
     )
-
-
-@app.post("/products", status_code=status.HTTP_201_CREATED)
+ 
+@app.post("/products", status_code=201)
 def add_product(product: Product):
-
-    query = """
-    INSERT INTO Product
-    (product_id, product_name, product_price, product_category)
-    VALUES (?, ?, ?, ?)
-    """
-
+    connection = get_connection()
     try:
-        database.cursor.execute(
-            query,
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT product_id FROM Product WHERE product_id = ?",
+            (product.product_id,),
+        )
+        existing_product = cursor.fetchone()
+        if existing_product:
+            raise HTTPException(status_code=400, detail="Duplicate Product ID")
+ 
+        cursor.execute(
+            """
+            INSERT INTO Product (product_id, product_name, product_price, product_category)
+            VALUES (?, ?, ?, ?)
+            """,
             (
                 product.product_id,
                 product.product_name,
                 product.product_price,
-                product.product_category
-            )
+                product.product_category,
+            ),
         )
-
-        database.connection.commit()
-
-        return {
-            "message": "Product Added Successfully"
-        }
-
-    except sqlite3.IntegrityError:
-        raise HTTPException(
-            status_code=400,
-            detail="Product ID Already Exists"
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
-
+        connection.commit()
+        return {"message": "Product Added Successfully"}
+    except HTTPException:
+        raise
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    finally:
+        connection.close()
+ 
+ 
 @app.get("/products")
-def get_products():
-
-    query = "SELECT * FROM Product"
-
-    database.cursor.execute(query)
-
-    products = database.cursor.fetchall()
-
-    product_list = []
-
-    for product in products:
-
-        product_list.append({
-            "product_id": product[0],
-            "product_name": product[1],
-            "product_price": product[2],
-            "product_category": product[3]
-        })
-
-    return product_list
-
-
+def get_all_products():
+    connection = get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute("SELECT * FROM Product")
+        rows = cursor.fetchall()
+        products = [dict(row) for row in rows]
+        return products
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    finally:
+        connection.close()
+ 
+ 
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
-
-    query = "SELECT * FROM Product WHERE product_id = ?"
-
-    database.cursor.execute(query, (product_id,))
-
-    product = database.cursor.fetchone()
-
-    if product is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Product Not Found"
+    connection = get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT * FROM Product WHERE product_id = ?", (product_id,)
         )
-
-    return {
-        "product_id": product[0],
-        "product_name": product[1],
-        "product_price": product[2],
-        "product_category": product[3]
-    }
-
-
+        row = cursor.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Product Not Found")
+        return dict(row)
+    except HTTPException:
+        raise
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    finally:
+        connection.close()
+ 
+ 
 @app.put("/products/{product_id}")
-def update_product(product_id: int, product: Product):
-
-    query = """
-    UPDATE Product
-    SET product_name=?,
-        product_price=?,
-        product_category=?
-    WHERE product_id=?
-    """
-
-    database.cursor.execute(
-        query,
-        (
-            product.product_name,
-            product.product_price,
-            product.product_category,
-            product_id
+def update_product(product_id: int, product: ProductUpdate):
+    connection = get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT product_id FROM Product WHERE product_id = ?", (product_id,)
         )
-    )
-
-    database.connection.commit()
-
-    if database.cursor.rowcount == 0:
-        raise HTTPException(
-            status_code=404,
-            detail="Product Not Found"
+        existing_product = cursor.fetchone()
+        if existing_product is None:
+            raise HTTPException(status_code=404, detail="Product Not Found")
+ 
+        cursor.execute(
+            """
+            UPDATE Product
+            SET product_name = ?, product_price = ?, product_category = ?
+            WHERE product_id = ?
+            """,
+            (
+                product.product_name,
+                product.product_price,
+                product.product_category,
+                product_id,
+            ),
         )
-
-    return {
-        "message": "Product Updated Successfully"
-    }
-
-
+        connection.commit()
+        return {"message": "Product Updated Successfully"}
+    except HTTPException:
+        raise
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    finally:
+        connection.close()
+ 
+ 
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int):
-
-    query = "DELETE FROM Product WHERE product_id = ?"
-
-    database.cursor.execute(query, (product_id,))
-
-    database.connection.commit()
-
-    if database.cursor.rowcount == 0:
-        raise HTTPException(
-            status_code=404,
-            detail="Product Not Found"
+    connection = get_connection()
+    try:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT product_id FROM Product WHERE product_id = ?", (product_id,)
         )
-
-    return {
-        "message": "Product Deleted Successfully"
-    }
+        existing_product = cursor.fetchone()
+        if existing_product is None:
+            raise HTTPException(status_code=404, detail="Product Not Found")
+ 
+        cursor.execute("DELETE FROM Product WHERE product_id = ?", (product_id,))
+        connection.commit()
+        return {"message": "Product Deleted Successfully"}
+    except HTTPException:
+        raise
+    except sqlite3.Error:
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    finally:
+        connection.close()
+ 
