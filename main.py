@@ -3,9 +3,13 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from email_service import send_otp
+from otp_manager import generate_otp, verify_otp
 import sqlite3
+
  
 from database import get_connection, create_table
+verify_emails = set()
  
 app = FastAPI(title="Inventory Management System")
  
@@ -20,6 +24,14 @@ class Product(BaseModel):
     product_name: str
     product_price: float
     product_category: str
+
+class OTPRequest(BaseModel):
+    email: str
+
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: str
  
  
 class ProductUpdate(BaseModel):
@@ -38,7 +50,9 @@ def read_index(request: Request):
  
 @app.post("/products", status_code=201)
 def add_product(product: Product):
+
     connection = get_connection()
+
     try:
         cursor = connection.cursor()
         cursor.execute(
@@ -162,4 +176,42 @@ def delete_product(product_id: int):
         raise HTTPException(status_code=500, detail="Database error occurred")
     finally:
         connection.close()
- 
+
+@app.post("/send-otp")
+def send_email_otp(data: OTPRequest):
+
+    email = data.email
+
+    otp = generate_otp(email)
+
+    send_otp(email, otp)
+
+    return {
+
+        "message": "OTP Sent Successfully"
+
+    }
+
+@app.post("/verify-otp")
+def verify_email_otp(data: VerifyOTPRequest):
+
+    email = data.email
+    otp = data.otp
+
+    if verify_otp(email, otp):
+
+        verify_emails.add(email)
+
+        return {
+
+            "message": "OTP Verified Successfully"
+
+        }
+
+    raise HTTPException(
+
+        status_code=400,
+
+        detail="Invalid OTP"
+
+    )

@@ -1,4 +1,5 @@
 let selectedProductId = null;
+let otpVerified = false;
 
 window.onload = function () {
     loadProducts();
@@ -75,6 +76,14 @@ async function loadProducts() {
 
 async function addProduct() {
 
+    if (!otpVerified) {
+
+        alert("Please Verify OTP First");
+
+        return;
+
+    }
+
     const product = {
 
         product_id: Number(document.getElementById("productId").value),
@@ -104,6 +113,8 @@ async function addProduct() {
     const result = await response.json();
 
     alert(result.message || result.detail);
+
+    otpVerified = false;
 
     clearForm();
 
@@ -239,5 +250,99 @@ function clearForm() {
     document.getElementById("productForm").reset();
 
     document.getElementById("searchId").value = "";
+
+}
+
+async function sendOTP() {
+
+    const email = document.getElementById("email").value;
+
+    if (email === "") {
+
+        alert("Please Enter Email");
+
+        return;
+
+    }
+
+    const response = await fetch("/send-otp", {
+
+        method: "POST",
+
+        headers: {
+
+            "Content-Type": "application/json"
+
+        },
+
+        body: JSON.stringify({
+
+            email: email
+
+        })
+
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+
+        alert(result.message);
+
+    } else {
+
+        alert(result.detail);
+
+    }
+
+}
+
+async function verifyOTP() {
+
+    const email = document.getElementById("email").value;
+    const otp = document.getElementById("otp").value;
+
+    if (email === "" || otp === "") {
+
+        alert("Please Enter Email and OTP");
+
+        return;
+
+    }
+
+    const response = await fetch("/verify-otp", {
+
+        method: "POST",
+
+        headers: {
+
+            "Content-Type": "application/json"
+
+        },
+
+        body: JSON.stringify({
+
+            email: email,
+            otp: otp
+
+        })
+
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+
+        otpVerified = true;
+
+        alert(result.message);
+
+    } else {
+
+        otpVerified = false;
+
+        alert(result.detail);
+
+    }
 
 }
