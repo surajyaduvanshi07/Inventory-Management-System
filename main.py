@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from pydantic import BaseModel
-import mysql.connector
+import sqlite3
 import database
 
 app = FastAPI()
@@ -16,22 +16,19 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-
-
 class Product(BaseModel):
     product_id: int
     product_name: str
     product_price: float
     product_category: str
 
-@app.get("/")
-def home():
+
+@app.get("/", response_class=HTMLResponse)
+def home(request: Request):
     return templates.TemplateResponse(
-        request={"request": None},
-        name="index.html"
+        "index.html",
+        {"request": request}
     )
-
-
 
 
 @app.post("/products", status_code=status.HTTP_201_CREATED)
@@ -40,7 +37,7 @@ def add_product(product: Product):
     query = """
     INSERT INTO Product
     (product_id, product_name, product_price, product_category)
-    VALUES (%s, %s, %s, %s)
+    VALUES (?, ?, ?, ?)
     """
 
     try:
@@ -60,7 +57,7 @@ def add_product(product: Product):
             "message": "Product Added Successfully"
         }
 
-    except mysql.connector.IntegrityError:
+    except sqlite3.IntegrityError:
         raise HTTPException(
             status_code=400,
             detail="Product ID Already Exists"
@@ -71,8 +68,6 @@ def add_product(product: Product):
             status_code=500,
             detail=str(e)
         )
-
-
 
 
 @app.get("/products")
@@ -98,12 +93,10 @@ def get_products():
     return product_list
 
 
-
-
 @app.get("/products/{product_id}")
 def get_product(product_id: int):
 
-    query = "SELECT * FROM Product WHERE product_id = %s"
+    query = "SELECT * FROM Product WHERE product_id = ?"
 
     database.cursor.execute(query, (product_id,))
 
@@ -123,17 +116,15 @@ def get_product(product_id: int):
     }
 
 
-
-
 @app.put("/products/{product_id}")
 def update_product(product_id: int, product: Product):
 
     query = """
     UPDATE Product
-    SET product_name=%s,
-        product_price=%s,
-        product_category=%s
-    WHERE product_id=%s
+    SET product_name=?,
+        product_price=?,
+        product_category=?
+    WHERE product_id=?
     """
 
     database.cursor.execute(
@@ -159,11 +150,10 @@ def update_product(product_id: int, product: Product):
     }
 
 
-
 @app.delete("/products/{product_id}")
 def delete_product(product_id: int):
 
-    query = "DELETE FROM Product WHERE product_id = %s"
+    query = "DELETE FROM Product WHERE product_id = ?"
 
     database.cursor.execute(query, (product_id,))
 
