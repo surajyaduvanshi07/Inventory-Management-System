@@ -1,27 +1,54 @@
 import sqlite3
- 
-DATABASE_NAME = "inventory.db"
- 
- 
+from config import DATABASE_NAME
+
+
 def get_connection():
+
     connection = sqlite3.connect(DATABASE_NAME)
+
     connection.row_factory = sqlite3.Row
+
     return connection
- 
- 
-def create_table():
+
+
+def create_tables():
+
     connection = get_connection()
+
     cursor = connection.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS Product (
-            product_id INTEGER PRIMARY KEY,
-            product_name TEXT NOT NULL,
-            product_price REAL NOT NULL,
-            product_category TEXT NOT NULL
-        )
-        """
+
+    cursor.execute("""
+
+    CREATE TABLE IF NOT EXISTS users(
+
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        email TEXT UNIQUE NOT NULL,
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        last_login TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
     )
+
+    """)
+
+    cursor.execute("""
+
+    CREATE TABLE IF NOT EXISTS products(
+
+        product_id INTEGER PRIMARY KEY,
+
+        product_name TEXT NOT NULL,
+
+        product_price REAL NOT NULL,
+
+        product_category TEXT NOT NULL
+
+    )
+
+    """)
+
     connection.commit()
+
     connection.close()
- 
