@@ -4,4 +4,5 @@ uvicorn
 jinja2
 python-dotenv
 email-validator
+resend
 itsdangerous
